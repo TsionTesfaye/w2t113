@@ -1,0 +1,49 @@
+{
+  "devMode": true,
+  "sharedMode": true,
+  "reputation": {
+    "weights": {
+      "fulfillmentRate": 0.5,
+      "lateRate": 0.3,
+      "complaintRate": 0.2
+    },
+    "threshold": 60,
+    "windowDays": 90
+  },
+  "registration": {
+    "waitlistPromotionFillRate": 0.95,
+    "transitions": {
+      "Draft": ["Submitted", "Cancelled"],
+      "Submitted": ["NeedsMoreInfo", "UnderReview", "Cancelled", "Waitlisted"],
+      "NeedsMoreInfo": ["Submitted", "Cancelled"],
+      "UnderReview": ["Approved", "Rejected", "NeedsMoreInfo", "Cancelled"],
+      "Waitlisted": ["UnderReview", "Cancelled"],
+      "Approved": ["Cancelled"],
+      "Rejected": [],
+      "Cancelled": []
+    },
+    "terminalStates": ["Rejected", "Cancelled"],
+    "rejectionCommentMinLength": 20
+  },
+  "review": {
+    "maxImages": 6,
+    "maxImageSizeMB": 2,
+    "maxTextLength": 2000,
+    "followUpWindowDays": 14
+  },
+  "moderation": {
+    "resolutionDeadlineDays": 7
+  },
+  "quiz": {
+    "subjectiveScoreMin": 0,
+    "subjectiveScoreMax": 10
+  },
+  "contract": {
+    "transitions": {
+      "initiated": ["signed", "withdrawn", "voided"],
+      "signed": ["voided"],
+      "withdrawn": [],
+      "voided": []
+    }
+  }
+}

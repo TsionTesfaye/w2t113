@@ -1,0 +1,11 @@
+{
+  "name": "trainingops-enrollment-quality-console",
+  "version": "1.0.0",
+  "description": "Offline browser-based SPA for managing training enrollment, assessments, contracts, and trust workflows.",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node run_tests.js"
+  },
+  "private": true
+}

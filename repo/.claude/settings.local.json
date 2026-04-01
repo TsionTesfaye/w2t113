@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3:*)",
+      "Bash(node:*)",
+      "Bash(chmod:*)",
+      "Bash(./run_tests.sh)",
+      "Bash(docker compose:*)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8080/)",
+      "Bash(npm install:*)",
+      "Bash(lsof -ti:8080)",
+      "Bash(xargs kill:*)",
+      "Bash(grep:*)",
+      "Bash(find /Users/tsiontesfaye/Projects/EaglePoint/training-ops/repo -not -path */node_modules/* -type d)",
+      "Bash(npm test:*)",
+      "Bash(find /Users/tsiontesfaye/Projects/EaglePoint/training-ops/repo/src -type f \\\\\\(-name *.js -o -name *.json \\\\\\))"
+    ]
+  }
+}
