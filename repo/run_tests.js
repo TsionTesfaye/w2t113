@@ -3,6 +3,9 @@
  * Run with: node run_tests.js
  */
 
+// Polyfill globalThis.crypto for Node 18 (Node 20+ has it natively)
+import './crypto-polyfill.js';
+
 import { printSummary } from './test-helpers.js';
 
 // Unit tests (unit_tests/)

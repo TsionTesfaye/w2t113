@@ -56,7 +56,7 @@ async function withServer(fn) {
     // Poll via HTTP until server responds
     const probe = () => {
       if (resolved) return;
-      http.get(`http://localhost:${port}/`, (res) => {
+      http.get(`http://127.0.0.1:${port}/`, (res) => {
         res.resume(); // drain
         if (!resolved) {
           resolved = true;
@@ -90,7 +90,7 @@ export async function runServerRuntimeTests() {
   await describe('Server runtime: real HTTP requests', async () => {
     await it('GET / returns 200 with HTML content', async () => {
       await withServer(async (port) => {
-        const res = await httpGet(`http://localhost:${port}/`);
+        const res = await httpGet(`http://127.0.0.1:${port}/`);
         assertEqual(res.statusCode, 200, 'Root returns 200');
         assert(res.body.includes('<!DOCTYPE html>') || res.body.includes('<html'), 'Returns HTML');
         assert(res.body.includes('TrainingOps'), 'Contains app title');
@@ -99,7 +99,7 @@ export async function runServerRuntimeTests() {
 
     await it('GET /public/index.html returns the SPA shell', async () => {
       await withServer(async (port) => {
-        const res = await httpGet(`http://localhost:${port}/public/index.html`);
+        const res = await httpGet(`http://127.0.0.1:${port}/public/index.html`);
         assertEqual(res.statusCode, 200);
         assert(res.body.includes('<div id="app">'), 'Contains app mount point');
       });
@@ -107,7 +107,7 @@ export async function runServerRuntimeTests() {
 
     await it('GET /src/app.js returns JavaScript', async () => {
       await withServer(async (port) => {
-        const res = await httpGet(`http://localhost:${port}/src/app.js`);
+        const res = await httpGet(`http://127.0.0.1:${port}/src/app.js`);
         assertEqual(res.statusCode, 200);
         assert(res.headers['content-type'].includes('javascript'), 'Serves JS content type');
         assert(res.body.includes('import'), 'Contains ES module import');
@@ -116,7 +116,7 @@ export async function runServerRuntimeTests() {
 
     await it('GET /nonexistent returns SPA fallback (not 404)', async () => {
       await withServer(async (port) => {
-        const res = await httpGet(`http://localhost:${port}/nonexistent`);
+        const res = await httpGet(`http://127.0.0.1:${port}/nonexistent`);
         // Server serves index.html for SPA routing
         assertEqual(res.statusCode, 200, 'SPA fallback returns 200');
       });
@@ -124,7 +124,7 @@ export async function runServerRuntimeTests() {
 
     await it('config defaults.json is accessible', async () => {
       await withServer(async (port) => {
-        const res = await httpGet(`http://localhost:${port}/src/config/defaults.json`);
+        const res = await httpGet(`http://127.0.0.1:${port}/src/config/defaults.json`);
         assertEqual(res.statusCode, 200);
         const config = JSON.parse(res.body);
         assert(config.reputation, 'Config has reputation section');
@@ -135,7 +135,7 @@ export async function runServerRuntimeTests() {
 
     await it('directory traversal blocked', async () => {
       await withServer(async (port) => {
-        const res = await httpGet(`http://localhost:${port}/../../../etc/passwd`);
+        const res = await httpGet(`http://127.0.0.1:${port}/../../../etc/passwd`);
         // Should NOT return actual /etc/passwd content
         assert(!res.body.includes('root:'), 'No directory traversal');
       });

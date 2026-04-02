@@ -79,7 +79,7 @@ After bootstrap, the administrator creates additional users (Staff Reviewer, Ins
 - HTML5 / CSS3 / JavaScript (ES2022+)
 - IndexedDB (via repository abstraction)
 - Web Crypto API (PBKDF2, AES-GCM, SHA-256)
-- Node.js 20+ (for static server and test runner only)
+- Node.js 18+ (for static server and test runner only)
 - Docker (for containerized deployment)
 
 ## Quick Start with Docker
@@ -100,7 +100,7 @@ docker compose down
 
 ## Quick Start without Docker
 
-Requires Node.js 20 or later.
+Requires Node.js 18 or later.
 
 ```bash
 node server.js
@@ -132,7 +132,7 @@ node run_tests.js
 
 `npm test` and `./run_tests.sh` are thin wrappers around the same command and produce identical results. There is no alternative test logic or separate test flow — all three entry points invoke `node run_tests.js` directly.
 
-The test runner executes every suite and exits with code 0 on success, code 1 on any failure. Node.js 20+ is the only prerequisite — nothing to install.
+The test runner executes every suite and exits with code 0 on success, code 1 on any failure. Node.js 18+ is the only prerequisite — nothing to install.
 
 ### No Third-Party Testing Dependencies
 

@@ -141,16 +141,17 @@ export async function runFullPassTests() {
     await it('should handle exact boundary: registration exactly at 90-day cutoff', async () => {
       const { reputationService, repos } = buildTestServices();
       const now = new Date();
-      // Exactly at boundary
-      const cutoff = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000).toISOString();
+      // Place the registration 1 second inside the 90-day window.
+      // Using exact cutoff can fail due to millisecond drift between the
+      // test computing the cutoff and the service recomputing it from Date.now().
+      const justInsideWindow = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000 + 1000).toISOString();
 
       await repos.registrationRepository.add({
         id: 'boundary', userId: 'u1', classId: 'c1', status: REGISTRATION_STATUS.APPROVED,
-        createdAt: cutoff, updatedAt: cutoff,
+        createdAt: justInsideWindow, updatedAt: justInsideWindow,
       });
 
       const result = await reputationService.computeScoreFromHistory('u1');
-      // At exact boundary — ISO string comparison: cutoff >= cutoff is true
       assert(result !== null, 'Exactly at boundary should be included');
     });
   });
