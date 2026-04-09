@@ -10,7 +10,8 @@ import { join, extname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
-const PORT = process.env.PORT || 8080;
+const BASE_PORT = Number(process.env.PORT) || 8080;
+const MAX_PORT_RETRIES = 5;
 
 const MIME_TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -24,7 +25,7 @@ const MIME_TYPES = {
   '.ico':  'image/x-icon',
 };
 
-const server = createServer(async (req, res) => {
+const requestHandler = async (req, res) => {
   try {
     let urlPath = decodeURIComponent(new URL(req.url, `http://localhost`).pathname);
 
@@ -83,9 +84,34 @@ const server = createServer(async (req, res) => {
     res.writeHead(500);
     res.end('Internal Server Error');
   }
-});
+};
 
-server.listen(PORT, '0.0.0.0', () => {
-  console.log(`TrainingOps server running at http://0.0.0.0:${PORT}`);
-  console.log(`Open http://localhost:${PORT} in your browser`);
-});
+/**
+ * Attempt to listen on BASE_PORT, retrying up to MAX_PORT_RETRIES on EADDRINUSE.
+ * Creates a fresh server instance per attempt to avoid stale listener/callback issues.
+ */
+function startServer(port, attempt) {
+  const server = createServer(requestHandler);
+
+  server.on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+      const nextPort = port + 1;
+      if (attempt >= MAX_PORT_RETRIES) {
+        console.error(`All ports ${BASE_PORT}–${port} are in use. Exiting.`);
+        process.exit(1);
+      }
+      console.warn(`Port ${port} in use, trying next port ${nextPort}...`);
+      startServer(nextPort, attempt + 1);
+    } else {
+      console.error(`Server error: ${err.message}`);
+      process.exit(1);
+    }
+  });
+
+  server.listen(port, '0.0.0.0', () => {
+    console.log(`TrainingOps server running at http://0.0.0.0:${port}`);
+    console.log(`Open http://localhost:${port} in your browser`);
+  });
+}
+
+startServer(BASE_PORT, 1);

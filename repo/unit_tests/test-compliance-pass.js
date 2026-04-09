@@ -205,17 +205,19 @@ export async function runCompliancePassTests() {
   // 4. REPUTATION WORKFLOW: PROMPT-FAITHFUL MANUAL REVIEW
   // ============================================================
 
-  await describe('Reputation: low score forces manual review (NeedsMoreInfo), not hard-block', async () => {
-    await it('low reputation creates registration in NeedsMoreInfo status', async () => {
-      const { registrationService, reputationService } = buildTestServices();
+  await describe('Reputation: low score forces manual review', async () => {
+    await it('low reputation forces registration into UnderReview with isManualReview', async () => {
+      const { registrationService, reputationService, repos } = buildTestServices();
       await reputationService.computeScore('low-rep-user', {
         fulfillmentRate: 0.1, lateRate: 0.8, complaintRate: 0.7,
       });
 
       const reg = await registrationService.create('low-rep-user', 'c1', 'Please review');
-      assertEqual(reg.status, REGISTRATION_STATUS.NEEDS_MORE_INFO);
-      assert(reg.notes.includes('LOW REPUTATION'), 'Should flag low reputation in notes');
-      assert(reg.notes.includes('Please review'), 'Should preserve original notes');
+      assertEqual(reg.status, 'UnderReview', 'Low-rep registration should be UnderReview');
+      assertEqual(reg.isManualReview, true, 'Should be flagged for manual review');
+
+      const allRegs = await repos.registrationRepository.getAll();
+      assertEqual(allRegs.filter(r => r.userId === 'low-rep-user').length, 1, 'Record should exist');
     });
 
     await it('normal reputation creates registration in Draft status', async () => {
@@ -249,13 +251,16 @@ export async function runCompliancePassTests() {
     });
 
     await it('score just below threshold (59) forces manual review', async () => {
-      const { registrationService, reputationService } = buildTestServices();
+      const { registrationService, reputationService, repos } = buildTestServices();
       // (0.18*0.5 + 1*0.3 + 1*0.2)*100 = (0.09+0.3+0.2)*100 = 59
       await reputationService.computeScore('below-borderline', {
         fulfillmentRate: 0.18, lateRate: 0.0, complaintRate: 0.0,
       });
       const reg = await registrationService.create('below-borderline', 'c1');
-      assertEqual(reg.status, REGISTRATION_STATUS.NEEDS_MORE_INFO, 'Score 59 should force manual review');
+      assertEqual(reg.status, REGISTRATION_STATUS.UNDER_REVIEW, 'Score 59 should force UnderReview');
+      assertEqual(reg.isManualReview, true, 'Score 59 should flag manual review');
+      const allRegs = await repos.registrationRepository.getAll();
+      assertEqual(allRegs.filter(r => r.userId === 'below-borderline').length, 1, 'Record should exist');
     });
 
     await it('uses config threshold value (not hardcoded)', () => {

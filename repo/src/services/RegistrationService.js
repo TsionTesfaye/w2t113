@@ -48,22 +48,32 @@ export class RegistrationService {
       if (approvedCount >= cls.capacity) throw new Error('This class is at full capacity. No spots available.');
     }
 
-    // Reputation enforcement at service level per original prompt:
-    // "a reputation score below 60 blocks new order-taking/booking privileges
-    //  and forces manual review for future registrations"
+    // Reputation enforcement: low-reputation users can still create registrations,
+    // but they are forced into manual review and cannot be auto-approved.
     const restricted = await this._reputationService.isRestricted(userId);
+
+    const initialStatus = restricted
+      ? REGISTRATION_STATUS.UNDER_REVIEW
+      : REGISTRATION_STATUS.DRAFT;
 
     const registration = createRegistration({
       id: generateId(),
       userId,
       classId,
-      status: restricted ? REGISTRATION_STATUS.NEEDS_MORE_INFO : REGISTRATION_STATUS.DRAFT,
-      notes: restricted ? (notes ? notes + ' [LOW REPUTATION - REQUIRES MANUAL REVIEW]' : '[LOW REPUTATION - REQUIRES MANUAL REVIEW]') : notes,
+      status: initialStatus,
+      notes,
     });
+
+    if (restricted) {
+      registration.isManualReview = true;
+    }
+
     await this._registrationRepo.add(registration);
-    const createComment = restricted ? 'Registration created — low reputation, requires manual review' : 'Registration created';
-    await this._logEvent(registration.id, null, registration.status, createComment, userId);
-    await this._auditService.log('registration', registration.id, 'created', `Registration created in ${registration.status}`, userId);
+    const eventComment = restricted
+      ? 'Registration created (manual review required due to low reputation)'
+      : 'Registration created';
+    await this._logEvent(registration.id, null, registration.status, eventComment, userId);
+    await this._auditService.log('registration', registration.id, 'created', `Registration created in ${registration.status}${restricted ? ' (manual review — low reputation)' : ''}`, userId);
     eventBus.emit('registration:created', registration);
     return registration;
   }
@@ -100,6 +110,12 @@ export class RegistrationService {
       if (!selfAllowed.includes(newStatus)) {
         throw new Error(`You do not have permission to transition to ${newStatus}.`);
       }
+    }
+
+    // Prevent auto-approval of manual-review registrations — a reviewer must
+    // explicitly transition through UnderReview → Approved with a comment.
+    if (reg.isManualReview && newStatus === REGISTRATION_STATUS.APPROVED && !isReviewerOrAdmin) {
+      throw new Error('Manual-review registrations can only be approved by a reviewer or administrator.');
     }
 
     if (newStatus === REGISTRATION_STATUS.REJECTED) {

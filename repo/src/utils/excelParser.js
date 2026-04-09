@@ -1,15 +1,29 @@
 /**
  * excelParser — lightweight .xlsx parser using JSZip-style approach.
  * Parses XLSX (Open XML) files by unzipping and reading the XML content.
- * No external dependencies — uses browser APIs only.
+ * No external dependencies — uses browser APIs only (with JS inflate fallback).
  *
  * XLSX structure:
  *   xl/sharedStrings.xml — string table
- *   xl/worksheets/sheet1.xml — cell data
+ *   xl/worksheets/*.xml — cell data (auto-detected)
  *
  * Supports: .xlsx files (Office Open XML)
  * For .xls (legacy binary), converts to a user-friendly error.
+ *
+ * Decompression: uses native DecompressionStream when available (Chromium 80+),
+ * falls back to a pure-JS RFC 1951 inflate implementation for other browsers.
  */
+
+import { inflate } from './inflate.js';
+
+/**
+ * Check whether the current environment supports XLSX import.
+ * Always true — native DecompressionStream or JS inflate fallback.
+ * @returns {boolean}
+ */
+export function isXlsxSupported() {
+  return true;
+}
 
 /**
  * Parse an Excel file (.xlsx) into an array of row objects.
@@ -33,9 +47,15 @@ export async function parseExcelFile(buffer, filename) {
   try {
     const entries = await unzip(buffer);
     const sharedStrings = parseSharedStrings(entries['xl/sharedStrings.xml']);
-    const sheetXml = entries['xl/worksheets/sheet1.xml'];
+
+    // Dynamically find the first available worksheet instead of hardcoding sheet1.xml
+    const worksheetPrefix = 'xl/worksheets/';
+    const sheetKey = Object.keys(entries)
+      .filter(k => k.startsWith(worksheetPrefix) && k.endsWith('.xml'))
+      .sort()[0];
+    const sheetXml = sheetKey ? entries[sheetKey] : null;
     if (!sheetXml) {
-      throw new Error('No worksheet found in Excel file.');
+      throw new Error('No worksheet found in Excel file. The file may have an invalid structure.');
     }
     const rows = parseSheet(sheetXml, sharedStrings);
     if (rows.length < 2) {
@@ -96,29 +116,35 @@ async function unzip(buffer) {
         // Stored (no compression)
         entries[name] = new TextDecoder().decode(compressedData);
       } else if (compressionMethod === 8) {
-        // Deflate
+        // Deflate — use native DecompressionStream if available, else JS fallback
         try {
-          const ds = new DecompressionStream('deflate-raw');
-          const writer = ds.writable.getWriter();
-          const reader = ds.readable.getReader();
+          if (typeof DecompressionStream !== 'undefined') {
+            const ds = new DecompressionStream('deflate-raw');
+            const writer = ds.writable.getWriter();
+            const reader = ds.readable.getReader();
 
-          writer.write(compressedData);
-          writer.close();
+            writer.write(compressedData);
+            writer.close();
 
-          const chunks = [];
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            chunks.push(value);
+            const chunks = [];
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              chunks.push(value);
+            }
+            const totalLen = chunks.reduce((s, c) => s + c.length, 0);
+            const result = new Uint8Array(totalLen);
+            let pos = 0;
+            for (const chunk of chunks) {
+              result.set(chunk, pos);
+              pos += chunk.length;
+            }
+            entries[name] = new TextDecoder().decode(result);
+          } else {
+            // Fallback: pure-JS inflate (RFC 1951)
+            const decompressed = inflate(compressedData);
+            entries[name] = new TextDecoder().decode(decompressed);
           }
-          const totalLen = chunks.reduce((s, c) => s + c.length, 0);
-          const result = new Uint8Array(totalLen);
-          let pos = 0;
-          for (const chunk of chunks) {
-            result.set(chunk, pos);
-            pos += chunk.length;
-          }
-          entries[name] = new TextDecoder().decode(result);
         } catch {
           // Skip entries that fail to decompress
         }

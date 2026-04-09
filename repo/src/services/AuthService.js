@@ -209,10 +209,13 @@ export class AuthService {
   }
 
   /**
-   * Reset a user's password. Used for accounts that have _requiresPasswordReset=true
-   * (e.g. users imported via plaintext backup) and for admin-initiated resets.
-   * Does NOT require the current session to be the target user — an admin can reset
-   * any account. The caller is responsible for verifying permission before calling.
+   * Reset a user's password.
+   * RBAC enforced inside this method — callers need not check permissions.
+   * Allowed:
+   *   1. Admin resets any account
+   *   2. Authenticated user resets own password
+   *   3. No session, but target user has _requiresPasswordReset (recovery mode)
+   * All other cases are rejected.
    */
   async resetPassword(userId, newPassword) {
     if (!userId) return { success: false, error: 'User ID is required.' };
@@ -220,8 +223,20 @@ export class AuthService {
       return { success: false, error: 'Password must be at least 8 characters.' };
     }
 
+    const caller = this._currentUser;
     const user = await this._userRepo.getById(userId);
     if (!user) return { success: false, error: 'User not found.' };
+
+    // RBAC gate
+    const isAdmin = caller && caller.role === USER_ROLES.ADMINISTRATOR;
+    const isSelf = caller && caller.id === userId;
+    const isRecovery = !caller && user._requiresPasswordReset === true;
+
+    if (!isAdmin && !isSelf && !isRecovery) {
+      const actorId = caller ? caller.id : 'anonymous';
+      await this._auditService.log('user', userId, 'password_reset_denied', `Unauthorized reset attempt by ${actorId}`, actorId);
+      return { success: false, error: 'Unauthorized: you can only reset your own password.' };
+    }
 
     const { hash, salt } = await this._cryptoService.hashPassword(newPassword);
     user.passwordHash = `${hash}:${salt}`;
@@ -229,7 +244,7 @@ export class AuthService {
     user.updatedAt = now();
 
     await this._userRepo.put(user);
-    await this._auditService.log('user', userId, 'password_reset', 'Password reset completed', userId);
+    await this._auditService.log('user', userId, 'password_reset', 'Password reset completed', caller ? caller.id : userId);
 
     return { success: true };
   }

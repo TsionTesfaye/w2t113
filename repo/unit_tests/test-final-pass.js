@@ -149,8 +149,8 @@ export async function runFinalPassTests() {
   // ============================================================
 
   await describe('Reputation enforcement in RegistrationService.create()', async () => {
-    await it('should force manual review (NeedsMoreInfo) when reputation is below threshold', async () => {
-      const { registrationService, reputationService } = buildTestServices();
+    await it('should force manual review when reputation is below threshold', async () => {
+      const { registrationService, reputationService, repos } = buildTestServices();
       // Set a low reputation score
       await reputationService.computeScore('restricted-user', {
         fulfillmentRate: 0.1,
@@ -158,10 +158,13 @@ export async function runFinalPassTests() {
         complaintRate: 0.9,
       });
 
-      // Per original prompt: low reputation forces manual review, not hard-block
+      // Low reputation forces UnderReview with manual review flag
       const reg = await registrationService.create('restricted-user', 'c1');
-      assertEqual(reg.status, 'NeedsMoreInfo', 'Low-reputation registration should start in NeedsMoreInfo');
-      assert(reg.notes.includes('LOW REPUTATION'), 'Notes should indicate low reputation flag');
+      assertEqual(reg.status, 'UnderReview', 'Low-rep registration should be UnderReview');
+      assertEqual(reg.isManualReview, true, 'Should be flagged for manual review');
+
+      const allRegs = await repos.registrationRepository.getAll();
+      assertEqual(allRegs.filter(r => r.userId === 'restricted-user').length, 1, 'Record should exist');
     });
 
     await it('should allow registration when reputation is above threshold', async () => {
@@ -174,12 +177,14 @@ export async function runFinalPassTests() {
 
       const reg = await registrationService.create('good-user', 'c1');
       assert(reg.id, 'Registration should be created');
+      assertEqual(reg.status, 'Draft', 'Good-rep registration should be Draft');
     });
 
     await it('should allow registration when no reputation score exists (new user)', async () => {
       const { registrationService } = buildTestServices();
       const reg = await registrationService.create('new-user', 'c1');
       assert(reg.id, 'New user with no score should be allowed');
+      assertEqual(reg.status, 'Draft', 'New user registration should be Draft');
     });
 
     await it('should respect config threshold value', async () => {

@@ -31,6 +31,9 @@ import { runBlockerFixTests } from './unit_tests/test-blocker-fixes.js';
 import { runSecondaryHardeningTests } from './unit_tests/test-secondary-hardening.js';
 import { runGapClosingFinalTests } from './unit_tests/test-gap-closing-final.js';
 import { runSecurityHardeningFinalTests } from './unit_tests/test-security-hardening-final.js';
+import { runPartialPassFixTests } from './unit_tests/test-partial-pass-fixes.js';
+import { runInflateFallbackTests } from './unit_tests/test-inflate-fallback.js';
+import { runReputationFlowTests } from './unit_tests/test-reputation-flow.js';
 
 // API / Integration tests (API_tests/)
 import { runRegistrationLifecycleTests } from './API_tests/test-registration-lifecycle.js';
@@ -85,6 +88,9 @@ async function main() {
   await runSecondaryHardeningTests();
   await runGapClosingFinalTests();
   await runSecurityHardeningFinalTests();
+  await runPartialPassFixTests();
+  await runInflateFallbackTests();
+  await runReputationFlowTests();
 
   // ---- API / Integration Tests ----
   console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');

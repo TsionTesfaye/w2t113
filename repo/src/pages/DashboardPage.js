@@ -31,14 +31,14 @@ export class DashboardPage {
 
       // KPI Cards
       const kpiData = [
-        { label: 'Total Registrations', value: kpis.totalRegistrations },
-        { label: 'Pending', value: kpis.pendingRegistrations },
-        { label: 'Approved', value: kpis.approvedRegistrations },
-        { label: 'Rejected', value: kpis.rejectedRegistrations },
-        { label: 'Avg Quiz Score', value: kpis.averageQuizScore + '%' },
-        { label: 'Open Reports', value: kpis.openReports },
-        { label: 'Avg Resolution (days)', value: kpis.avgResolutionDays },
-        { label: 'Avg Fill Rate', value: kpis.averageFillRate + '%' },
+        { label: 'Total Registrations', value: kpis.totalRegistrations ?? 'N/A' },
+        { label: 'Pending', value: kpis.pendingRegistrations ?? 'N/A' },
+        { label: 'Approved', value: kpis.approvedRegistrations ?? 'N/A' },
+        { label: 'Rejected', value: kpis.rejectedRegistrations ?? 'N/A' },
+        { label: 'Avg Quiz Score', value: kpis.averageQuizScore != null ? kpis.averageQuizScore + '%' : 'N/A' },
+        { label: 'Open Reports', value: kpis.openReports ?? 'N/A' },
+        { label: 'Avg Resolution (days)', value: kpis.avgResolutionDays ?? 'N/A' },
+        { label: 'Avg Fill Rate', value: kpis.averageFillRate != null ? kpis.averageFillRate + '%' : 'N/A' },
       ];
 
       const kpiGrid = container.querySelector('#kpi-grid');

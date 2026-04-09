@@ -82,6 +82,10 @@ After bootstrap, the administrator creates additional users (Staff Reviewer, Ins
 - Node.js 18+ (for static server and test runner only)
 - Docker (for containerized deployment)
 
+## Browser Compatibility for Excel Import
+
+XLSX import works across all modern browsers. The parser uses native `DecompressionStream` when available (Chrome, Edge, and other Chromium-based browsers) and automatically falls back to a built-in pure-JavaScript RFC 1951 DEFLATE decompressor for browsers without `DecompressionStream` (Firefox, Safari). No external libraries are required — the fallback is a self-contained ~170-line implementation in `src/utils/inflate.js`.
+
 ## Quick Start with Docker
 
 ```bash
@@ -262,11 +266,65 @@ Start the server: `node server.js` → open http://localhost:8080
 - WHAT: Log out. Manually navigate to `http://localhost:8080/#/admin`.
 - EXPECTED: Immediately redirected to the login page. No admin content appears in the DOM, even briefly.
 
-**Step 9 — Full test suite**
+**Step 9 — Instructor: bulk import (JSON and Excel)**
+- WHO: Instructor (created in Step 3)
+- WHERE: `#/quiz` → Questions tab
+- WHAT (JSON): Click "Bulk Import". Select a `.json` file with valid question rows (fields: `questionText`, `type`, `correctAnswer`, `difficulty`, `tags`). Click Import.
+- EXPECTED: Questions appear in the table. Toast confirms import count.
+- WHAT (XLSX): Click "Bulk Import". Select a `.xlsx` file with the same columns. Click Import.
+- EXPECTED: Questions are parsed and imported. Works in Chrome, Edge, Firefox, and Safari. No browser-specific error.
+- WHAT (invalid): Select a `.xls` file or a corrupted `.xlsx`.
+- EXPECTED: Clear error message displayed in the modal (e.g., "Legacy .xls format is not supported").
+
+**Step 10 — Full test suite**
 - WHO: Reviewer
 - WHERE: Terminal in project root
 - WHAT: Run `node run_tests.js`
 - EXPECTED: All tests pass. Output ends with `N passing, 0 failing`.
+
+### Manual Verification Checklist — Bulk Import
+
+This checklist covers the full import flow for the Quiz Center bulk import feature. Prerequisites: complete Steps 1–3 of the Manual Browser Smoke Checklist above (server running, admin created, Instructor account exists).
+
+#### JSON Import
+
+| # | Action | Expected Result |
+|---|--------|-----------------|
+| 1 | Log in as Instructor. Navigate to `#/quiz` → Questions tab. Click "Bulk Import". | Modal opens with file input accepting `.json` and `.xlsx` files. |
+| 2 | Select a valid `.json` file containing an array of objects with fields `questionText`, `type`, `correctAnswer`, `difficulty`, `tags`. Click Import. | Toast confirms import count. Questions appear in the table with correct values. |
+| 3 | Click "Bulk Import" again. Select a `.json` file with missing required fields (e.g., no `type`). Click Import. | Validation errors displayed in the modal. No partial data saved — question count unchanged. |
+| 4 | Select a `.json` file containing malformed JSON (e.g., trailing comma). | Error displayed: "Cannot parse file: ..." No questions created. |
+
+#### Excel (.xlsx) Import
+
+| # | Action | Expected Result |
+|---|--------|-----------------|
+| 1 | Click "Bulk Import". Select a valid `.xlsx` file with columns: `questionText`, `type`, `correctAnswer`, `difficulty`, `tags` (first row as headers, data rows below). Click Import. | File is parsed. Toast confirms import count. Questions appear in the table. |
+| 2 | Verify imported question values match the spreadsheet content (text, type, difficulty, tags). | All fields match. No data corruption or truncation. |
+| 3 | Open browser DevTools Console during import. | No runtime errors, no unhandled promise rejections. |
+
+#### Invalid File Handling
+
+| # | Action | Expected Result |
+|---|--------|-----------------|
+| 1 | Click "Bulk Import". Select a legacy `.xls` file. | Error: "Legacy .xls format is not supported. Please save the file as .xlsx and try again." |
+| 2 | Select a `.xlsx` file that is corrupted (e.g., renamed `.txt` file). | Error: "Failed to parse Excel file: ..." No partial data saved. |
+| 3 | Select a valid `.xlsx` with only a header row and no data rows. | Error: "Excel file must have a header row and at least one data row." |
+| 4 | Select a file with an unsupported extension (e.g., `.csv`). | Error: "Unsupported file format. Please use .xlsx files." |
+
+#### Cross-Browser Verification
+
+The XLSX parser uses native `DecompressionStream` when available and automatically falls back to a pure-JavaScript DEFLATE decompressor (`src/utils/inflate.js`). Both paths produce identical results.
+
+| Browser | DecompressionStream | XLSX Import | How to Verify |
+|---------|-------------------|-------------|---------------|
+| Chrome 80+ | Native | Works (native path) | Import a `.xlsx` file — confirm success. |
+| Edge 80+ | Native | Works (native path) | Import a `.xlsx` file — confirm success. |
+| Firefox | Not available | Works (JS fallback) | Import a `.xlsx` file — confirm success. Open DevTools Console — no errors. |
+| Safari 16.4+ | Native | Works (native path) | Import a `.xlsx` file — confirm success. |
+| Safari < 16.4 | Not available | Works (JS fallback) | Import a `.xlsx` file — confirm success. Open DevTools Console — no errors. |
+
+**Pass criteria:** All four import scenarios (valid JSON, valid XLSX, invalid file, cross-browser XLSX) complete without unexpected errors, and no partial data is persisted on failure.
 
 ### Test Structure
 
@@ -296,6 +354,7 @@ unit_tests/                          Unit tests for individual service methods
   test-gap-closing-final.js           DB schema consistency (25 stores), class validation, follow-up images,
                                        QA moderation, dashboard learner scoping, import allowlist, devMode flag
   test-security-hardening-final.js    Bootstrap admin flow, blank canvas signature rejection
+  test-inflate-fallback.js            RFC 1951 inflate decompressor, XLSX fallback path verification
 
 API_tests/                           Cross-service integration/workflow tests
   test-registration-lifecycle.js
@@ -379,3 +438,56 @@ On first launch the app automatically:
 6. Log in as a Learner to submit registrations and take quizzes
 7. Log in as a Reviewer to process registrations and moderate reports
 8. Run `node run_tests.js` to execute all 706+ tests
+
+## Manual Verification Checklist
+
+Prerequisites: server running (`node server.js`), administrator account created, Instructor account created via Admin panel.
+
+### 1. JSON Import
+
+- WHO: Instructor
+- WHERE: `#/quiz` → Questions tab → "Bulk Import"
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Select a valid `.json` file containing an array of question objects (fields: `questionText`, `type`, `correctAnswer`, `difficulty`, `tags`). Click Import. | Toast confirms import count. Questions appear in the Questions table with correct values. |
+| 2 | Select a `.json` file with missing required fields (e.g., omit `type`). Click Import. | Validation errors listed in the modal. No questions created — table count unchanged. |
+| 3 | Select a `.json` file with malformed JSON (e.g., trailing comma, missing bracket). | Error displayed: "Cannot parse file: ..." No questions created. No partial data persisted. |
+
+### 2. Excel (.xlsx) Import
+
+- WHO: Instructor
+- WHERE: `#/quiz` → Questions tab → "Bulk Import"
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Select a valid `.xlsx` file with columns `questionText`, `type`, `correctAnswer`, `difficulty`, `tags` (first row = headers, subsequent rows = data). Click Import. | File is parsed successfully. Toast confirms import count. Questions appear in the table. |
+| 2 | Verify imported values match the spreadsheet content (question text, type, difficulty, tags). | All fields match exactly. No data corruption or truncation. |
+| 3 | Open browser DevTools Console before importing. Import the `.xlsx` file. | No runtime errors, no unhandled promise rejections, no warnings related to parsing. |
+
+### 3. Invalid File Handling
+
+- WHO: Instructor
+- WHERE: `#/quiz` → Questions tab → "Bulk Import"
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Select a legacy `.xls` file. | Error: "Legacy .xls format is not supported. Please save the file as .xlsx and try again." No data persisted. |
+| 2 | Select a corrupted `.xlsx` file (e.g., a renamed `.txt` or `.png` file with `.xlsx` extension). | Error: "Failed to parse Excel file: ..." No partial or invalid data persisted. |
+| 3 | Select a valid `.xlsx` file containing only a header row (no data rows). | Error: "Excel file must have a header row and at least one data row." |
+| 4 | Select a file with an unsupported extension (e.g., `.csv`, `.ods`). | Error: "Unsupported file format. Please use .xlsx files." |
+
+### 4. Cross-Browser Verification
+
+The XLSX parser uses native `DecompressionStream` when available and falls back to a pure-JavaScript RFC 1951 DEFLATE decompressor (`src/utils/inflate.js`). Both paths produce identical results. No external libraries or CDN resources are required.
+
+| Browser | Decompression Path | Verification Steps |
+|---------|-------------------|-------------------|
+| Chrome | Native `DecompressionStream` | Import a valid `.xlsx` file → confirm questions are created. Check DevTools Console → no errors. |
+| Firefox | JS fallback (`inflate.js`) | Import the same `.xlsx` file → confirm identical results to Chrome. Check DevTools Console → no errors. |
+| Safari | Native (16.4+) or JS fallback (<16.4) | Import the same `.xlsx` file → confirm identical results to Chrome. Check DevTools Console → no errors. |
+
+**Pass criteria:**
+- Valid JSON and XLSX imports succeed and create correct records in all tested browsers
+- Invalid files produce clear, specific error messages and persist no data
+- No browser-specific failures — the JS fallback handles non-Chromium environments transparently

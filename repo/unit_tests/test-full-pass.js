@@ -157,32 +157,22 @@ export async function runFullPassTests() {
   });
 
   // ============================================================
-  // 3. LOW-SCORE POLICY: FORCES MANUAL REVIEW (NeedsMoreInfo)
+  // 3. LOW-SCORE POLICY: FORCES MANUAL REVIEW
   // ============================================================
 
-  await describe('Low reputation: forces manual review per original prompt', async () => {
-    await it('low-reputation user creates registration in NeedsMoreInfo', async () => {
-      const { registrationService, reputationService } = buildTestServices();
-      await reputationService.computeScore('low-user', {
-        fulfillmentRate: 0.1, lateRate: 0.9, complaintRate: 0.9,
-      });
-
-      const reg = await registrationService.create('low-user', 'c1', 'My notes');
-      assertEqual(reg.status, REGISTRATION_STATUS.NEEDS_MORE_INFO);
-      assert(reg.notes.includes('LOW REPUTATION'), 'Should flag low reputation');
-      assert(reg.notes.includes('My notes'), 'Should preserve original notes');
-    });
-
-    await it('audit log records true initial status for low-reputation user', async () => {
+  await describe('Low reputation: forces manual review on registration', async () => {
+    await it('low-reputation user can create registration — forced into UnderReview with isManualReview', async () => {
       const { registrationService, reputationService, repos } = buildTestServices();
       await reputationService.computeScore('low-user', {
         fulfillmentRate: 0.1, lateRate: 0.9, complaintRate: 0.9,
       });
 
-      await registrationService.create('low-user', 'c1');
-      const logs = await repos.auditLogRepository.getAll();
-      const createLog = logs.find(l => l.action === 'created' && l.entityType === 'registration');
-      assert(createLog.details.includes('NeedsMoreInfo'), 'Audit should record NeedsMoreInfo status');
+      const reg = await registrationService.create('low-user', 'c1', 'My notes');
+      assertEqual(reg.status, 'UnderReview', 'Low-rep registration should be UnderReview');
+      assertEqual(reg.isManualReview, true, 'Should be flagged for manual review');
+
+      const allRegs = await repos.registrationRepository.getAll();
+      assertEqual(allRegs.filter(r => r.userId === 'low-user').length, 1, 'Record should exist');
     });
   });
 

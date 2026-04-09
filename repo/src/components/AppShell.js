@@ -8,10 +8,10 @@ import { escapeHtml } from '../utils/helpers.js';
 
 const NAV_ITEMS = [
   { path: '/dashboard',     label: 'Dashboard',     icon: '&#9632;', roles: null }, // all roles
-  { path: '/registrations', label: 'Registrations',  icon: '&#9998;', roles: null },
-  { path: '/quiz',          label: 'Quiz Center',    icon: '&#9733;', roles: null },
-  { path: '/reviews',       label: 'Reviews & Q&A',  icon: '&#9825;', roles: null },
-  { path: '/contracts',     label: 'Contracts',       icon: '&#9997;', roles: null },
+  { path: '/registrations', label: 'Registrations',  icon: '&#9998;', roles: [USER_ROLES.LEARNER, USER_ROLES.INSTRUCTOR, USER_ROLES.STAFF_REVIEWER, USER_ROLES.ADMINISTRATOR] },
+  { path: '/quiz',          label: 'Quiz Center',    icon: '&#9733;', roles: [USER_ROLES.LEARNER, USER_ROLES.INSTRUCTOR, USER_ROLES.ADMINISTRATOR] },
+  { path: '/reviews',       label: 'Reviews & Q&A',  icon: '&#9825;', roles: [USER_ROLES.LEARNER, USER_ROLES.INSTRUCTOR, USER_ROLES.STAFF_REVIEWER, USER_ROLES.ADMINISTRATOR] },
+  { path: '/contracts',     label: 'Contracts',       icon: '&#9997;', roles: [USER_ROLES.LEARNER, USER_ROLES.INSTRUCTOR, USER_ROLES.STAFF_REVIEWER, USER_ROLES.ADMINISTRATOR] },
   { path: '/admin',         label: 'Admin',           icon: '&#9881;', roles: [USER_ROLES.ADMINISTRATOR] },
 ];
 

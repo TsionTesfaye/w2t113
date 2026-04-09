@@ -226,7 +226,7 @@ export class RegistrationsPage {
     const user = authService.getCurrentUser();
     if (!user) return;
 
-    // Check reputation — inform user but allow creation (service enforces manual review)
+    // Check reputation — show warning but do NOT block
     const restricted = await reputationService.isRestricted(user.id);
 
     // Load classes for selection
@@ -236,9 +236,13 @@ export class RegistrationsPage {
       ? classes.map(c => `<option value="${c.id}">${escapeHtml(c.title || c.id)}</option>`).join('')
       : '<option value="">No classes available</option>';
 
+    const reputationWarning = restricted
+      ? '<div class="form-error" style="margin-bottom:12px;padding:8px;background:var(--color-warning-bg,#fff3cd);border-radius:var(--radius)">Your account requires manual review due to reputation. You may still submit, but your registration will be reviewed before approval.</div>'
+      : '';
+
     Modal.custom('New Registration', `
       <form id="new-reg-form">
-        ${restricted ? '<div class="form-error" style="margin-bottom:12px">Your reputation score is low. This registration will be submitted for manual review.</div>' : ''}
+        ${reputationWarning}
         <div class="form-group">
           <label for="reg-class">Class <span style="color:var(--color-danger)">*</span></label>
           <select id="reg-class" class="form-control" required>
@@ -251,7 +255,7 @@ export class RegistrationsPage {
           <textarea id="reg-notes" class="form-control" rows="3" placeholder="Optional notes..."></textarea>
         </div>
         <div id="reg-error" class="form-error"></div>
-        <button type="submit" class="btn btn-primary mt-4">${restricted ? 'Submit for Manual Review' : 'Create Draft'}</button>
+        <button type="submit" class="btn btn-primary mt-4">${restricted ? 'Submit for Review' : 'Create Draft'}</button>
       </form>
     `, (modalEl, close) => {
       modalEl.querySelector('#new-reg-form').addEventListener('submit', async (e) => {
@@ -264,9 +268,7 @@ export class RegistrationsPage {
             return;
           }
           const created = await registrationService.create(user.id, classId, notes);
-          Toast.success(created.status === REGISTRATION_STATUS.NEEDS_MORE_INFO
-            ? 'Registration submitted for manual review due to low reputation.'
-            : 'Draft registration created.');
+          Toast.success(created.isManualReview ? 'Registration submitted for manual review.' : 'Draft registration created.');
           close();
           const container = this.appShell.getContentContainer();
           await this._loadTable(container);

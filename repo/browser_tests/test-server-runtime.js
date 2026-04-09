@@ -143,6 +143,71 @@ export async function runServerRuntimeTests() {
   });
 
   // ============================================================
+  // 1b. PORT FALLBACK — EADDRINUSE RESILIENCE
+  // ============================================================
+
+  await describe('Server runtime: port fallback on EADDRINUSE', async () => {
+    await it('server falls back to next port when primary port is occupied', async () => {
+      // Occupy a port with a dummy server
+      const blockerPort = 9200 + Math.floor(Math.random() * 100);
+      const blocker = http.createServer((req, res) => { res.end('occupied'); });
+      await new Promise((resolve, reject) => {
+        blocker.listen(blockerPort, '0.0.0.0', resolve);
+        blocker.on('error', reject);
+      });
+
+      try {
+        // Start real server with the blocked port — should auto-fallback
+        const child = spawn('node', ['server.js'], {
+          env: { ...process.env, PORT: String(blockerPort) },
+          cwd: process.cwd(),
+          stdio: 'pipe',
+        });
+
+        let serverOutput = '';
+        const fallbackPort = await new Promise((resolve, reject) => {
+          const deadline = setTimeout(() => reject(new Error('Server did not start within 10s')), 10000);
+
+          child.stdout.on('data', (data) => {
+            serverOutput += data.toString();
+            // Look for the "running at" message to capture the actual port
+            const match = serverOutput.match(/running at http:\/\/[\d.]+:(\d+)/);
+            if (match) {
+              clearTimeout(deadline);
+              resolve(Number(match[1]));
+            }
+          });
+          child.stderr.on('data', (data) => {
+            serverOutput += data.toString();
+          });
+          child.on('exit', (code) => {
+            if (code !== 0) {
+              clearTimeout(deadline);
+              reject(new Error(`Server exited with code ${code}: ${serverOutput}`));
+            }
+          });
+        });
+
+        // Verify fallback port is different from blocked port
+        assert(fallbackPort > blockerPort, `Server should use port ${fallbackPort} > blocked ${blockerPort}`);
+
+        // Verify server actually responds on fallback port
+        const res = await httpGet(`http://127.0.0.1:${fallbackPort}/`);
+        assertEqual(res.statusCode, 200, 'Fallback server responds with 200');
+
+        // Verify log mentions the retry
+        assert(serverOutput.includes('in use'), 'Output should mention port in use');
+
+        child.kill('SIGTERM');
+        await new Promise(r => setTimeout(r, 200));
+      } finally {
+        blocker.close();
+        await new Promise(r => setTimeout(r, 100));
+      }
+    });
+  });
+
+  // ============================================================
   // 2. PERSISTENCE ACROSS SESSIONS (InMemoryStore lifecycle)
   // ============================================================
 
