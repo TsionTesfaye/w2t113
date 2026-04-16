@@ -7,13 +7,17 @@ import { createFavorite } from '../models/Favorite.js';
 import { generateId } from '../utils/helpers.js';
 
 export class FavoriteService {
+  constructor(deps = {}) {
+    this._repo = deps.favoriteRepository || favoriteRepository;
+  }
+
   /**
    * Toggle a favorite — add if not exists, remove if exists.
    */
   async toggle(userId, itemType, itemId) {
     const existing = await this.find(userId, itemType, itemId);
     if (existing) {
-      await favoriteRepository.delete(existing.id);
+      await this._repo.delete(existing.id);
       return { action: 'removed' };
     }
 
@@ -23,7 +27,7 @@ export class FavoriteService {
       itemType,
       itemId,
     });
-    await favoriteRepository.add(fav);
+    await this._repo.add(fav);
     return { action: 'added', favorite: fav };
   }
 
@@ -39,7 +43,7 @@ export class FavoriteService {
    * Find a specific favorite.
    */
   async find(userId, itemType, itemId) {
-    const all = await favoriteRepository.getByUserId(userId);
+    const all = await this._repo.getByUserId(userId);
     return all.find(f => f.itemType === itemType && f.itemId === itemId) || null;
   }
 
@@ -47,14 +51,14 @@ export class FavoriteService {
    * Get all favorites for a user.
    */
   async getByUserId(userId) {
-    return favoriteRepository.getByUserId(userId);
+    return this._repo.getByUserId(userId);
   }
 
   /**
    * Get favorites by type for a user.
    */
   async getByUserAndType(userId, itemType) {
-    return favoriteRepository.getByUserAndType(userId, itemType);
+    return this._repo.getByUserAndType(userId, itemType);
   }
 }
 

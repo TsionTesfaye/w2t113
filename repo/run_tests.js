@@ -34,11 +34,8 @@ import { runSecurityHardeningFinalTests } from './unit_tests/test-security-harde
 import { runPartialPassFixTests } from './unit_tests/test-partial-pass-fixes.js';
 import { runInflateFallbackTests } from './unit_tests/test-inflate-fallback.js';
 import { runReputationFlowTests } from './unit_tests/test-reputation-flow.js';
-
-// API / Integration tests (API_tests/)
-import { runRegistrationLifecycleTests } from './API_tests/test-registration-lifecycle.js';
-import { runReviewModerationFlowTests } from './API_tests/test-review-moderation-flow.js';
-import { runContractSigningFlowTests } from './API_tests/test-contract-signing-flow.js';
+import { runCoverageGapTests } from './unit_tests/test-coverage-gaps.js';
+import { runMissingServicesTests } from './unit_tests/test-missing-services.js';
 
 // E2E tests (e2e_tests/)
 import { runE2ETests } from './e2e_tests/test-user-journeys.js';
@@ -52,6 +49,8 @@ import { runRouteEnforcementTests } from './browser_tests/test-route-enforcement
 import { runRuntimeVerificationTests } from './browser_tests/test-runtime-verification.js';
 import { runServerRuntimeTests } from './browser_tests/test-server-runtime.js';
 import { runSmokeTests } from './browser_tests/test-smoke.js';
+import { runFrontendUnitTests } from './browser_tests/test-frontend-units.js';
+import { runPageUnitTests } from './browser_tests/test-page-units.js';
 
 async function main() {
   console.log('╔══════════════════════════════════════════════════╗');
@@ -91,15 +90,8 @@ async function main() {
   await runPartialPassFixTests();
   await runInflateFallbackTests();
   await runReputationFlowTests();
-
-  // ---- API / Integration Tests ----
-  console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  console.log('  API TESTS (API_tests/)');
-  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-
-  await runRegistrationLifecycleTests();
-  await runReviewModerationFlowTests();
-  await runContractSigningFlowTests();
+  await runCoverageGapTests();
+  await runMissingServicesTests();
 
   // ---- E2E Tests ----
   console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
@@ -121,6 +113,8 @@ async function main() {
   await runRuntimeVerificationTests();
   await runServerRuntimeTests();
   await runSmokeTests();
+  await runFrontendUnitTests();
+  await runPageUnitTests();
 
   // ---- Summary ----
   const result = printSummary();

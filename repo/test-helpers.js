@@ -86,6 +86,15 @@ export class InMemoryStore {
   async getByAuthorId(authorId) { return this.getByIndex('authorId', authorId); }
   async getActive() { return this.getByIndex('active', true); }
   async getByItemType(itemType) { return this.getByIndex('itemType', itemType); }
+  async getByUserAndType(userId, itemType) {
+    const all = await this.getByUserId(userId);
+    return all.filter(r => r.itemType === itemType);
+  }
+
+  async getUnreadByUserId(userId) {
+    const all = await this.getByUserId(userId);
+    return all.filter(r => !r.read);
+  }
 }
 
 // ============================================================

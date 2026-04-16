@@ -8,6 +8,11 @@ import { generateId } from '../utils/helpers.js';
 import eventBus from '../utils/EventBus.js';
 
 export class NotificationService {
+  constructor(deps = {}) {
+    this._repo = deps.notificationRepository || notificationRepository;
+    this._eventBus = deps.eventBus || eventBus;
+  }
+
   /**
    * Create a notification for a user.
    */
@@ -20,8 +25,8 @@ export class NotificationService {
       type,
       link,
     });
-    await notificationRepository.add(notification);
-    eventBus.emit('notification:new', notification);
+    await this._repo.add(notification);
+    this._eventBus.emit('notification:new', notification);
     return notification;
   }
 
@@ -29,25 +34,25 @@ export class NotificationService {
    * Get all notifications for a user (newest first).
    */
   async getByUserId(userId) {
-    return notificationRepository.getByUserId(userId);
+    return this._repo.getByUserId(userId);
   }
 
   /**
    * Get unread notifications for a user.
    */
   async getUnreadByUserId(userId) {
-    return notificationRepository.getUnreadByUserId(userId);
+    return this._repo.getUnreadByUserId(userId);
   }
 
   /**
    * Mark a notification as read.
    */
   async markAsRead(notificationId) {
-    const notif = await notificationRepository.getById(notificationId);
+    const notif = await this._repo.getById(notificationId);
     if (!notif) return;
     notif.read = true;
-    await notificationRepository.put(notif);
-    eventBus.emit('notification:read', notif);
+    await this._repo.put(notif);
+    this._eventBus.emit('notification:read', notif);
   }
 
   /**
@@ -57,9 +62,9 @@ export class NotificationService {
     const unread = await this.getUnreadByUserId(userId);
     for (const notif of unread) {
       notif.read = true;
-      await notificationRepository.put(notif);
+      await this._repo.put(notif);
     }
-    eventBus.emit('notification:allRead', { userId });
+    this._eventBus.emit('notification:allRead', { userId });
   }
 
   /**

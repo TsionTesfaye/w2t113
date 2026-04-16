@@ -7,7 +7,9 @@ import moderationService from './ModerationService.js';
 import notificationService from './NotificationService.js';
 
 export class SchedulerService {
-  constructor() {
+  constructor(deps = {}) {
+    this._moderationService = deps.moderationService || moderationService;
+    this._notificationService = deps.notificationService || notificationService;
     this._intervals = [];
   }
 
@@ -27,12 +29,12 @@ export class SchedulerService {
     try {
       // Run enforcement twice: escalate then resolve in the same cycle.
       // This guarantees no report survives past the SLA boundary.
-      const pass1 = await moderationService.enforceDeadlines();
-      const pass2 = await moderationService.enforceDeadlines();
+      const pass1 = await this._moderationService.enforceDeadlines();
+      const pass2 = await this._moderationService.enforceDeadlines();
 
       const allResolved = [...(pass1.autoResolved || []), ...(pass2.autoResolved || [])];
       for (const report of allResolved) {
-        await notificationService.notify(
+        await this._notificationService.notify(
           'system', 'Report Auto-Resolved',
           `Abuse report ${report.id} auto-dismissed — 7-day SLA deadline exceeded.`,
           'warning', '#/reviews'

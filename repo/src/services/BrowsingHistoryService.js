@@ -7,6 +7,10 @@ import { createBrowsingHistoryEntry } from '../models/BrowsingHistory.js';
 import { generateId } from '../utils/helpers.js';
 
 export class BrowsingHistoryService {
+  constructor(deps = {}) {
+    this._repo = deps.browsingHistoryRepository || browsingHistoryRepository;
+  }
+
   /**
    * Record a browsing event.
    */
@@ -18,7 +22,7 @@ export class BrowsingHistoryService {
       itemId,
       title,
     });
-    await browsingHistoryRepository.add(entry);
+    await this._repo.add(entry);
     return entry;
   }
 
@@ -26,7 +30,7 @@ export class BrowsingHistoryService {
    * Get browsing history for a user (newest first).
    */
   async getHistory(userId) {
-    return browsingHistoryRepository.getByUserId(userId);
+    return this._repo.getByUserId(userId);
   }
 
   /**
@@ -43,7 +47,7 @@ export class BrowsingHistoryService {
   async clearHistory(userId) {
     const entries = await this.getHistory(userId);
     for (const entry of entries) {
-      await browsingHistoryRepository.delete(entry.id);
+      await this._repo.delete(entry.id);
     }
   }
 }

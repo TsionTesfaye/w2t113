@@ -1,0 +1,22 @@
+# ============================================================
+# TrainingOps — Test Image
+# Runs the full test suite: unit/e2e/browser tests + Playwright E2E
+# ============================================================
+
+FROM node:18-bookworm
+
+WORKDIR /app
+
+# Copy project files
+COPY . .
+
+# Install npm dependencies (including @playwright/test)
+RUN npm install
+
+# Install Playwright's Chromium browser and its OS dependencies
+RUN npx playwright install --with-deps chromium
+
+# Run all tests:
+#   1. node run_tests.js  — unit, e2e, browser simulation tests
+#   2. npx playwright test — full Playwright E2E against a real browser
+CMD ["bash", "-c", "node run_tests.js && npx playwright test"]

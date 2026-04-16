@@ -111,6 +111,12 @@ class MinimalElement {
     return child;
   }
 
+  remove() {
+    if (this.parentNode) {
+      this.parentNode.removeChild(this);
+    }
+  }
+
   getContext() {
     return {
       beginPath: () => {}, moveTo: () => {}, lineTo: () => {}, stroke: () => {},
@@ -151,7 +157,24 @@ class MinimalDocument {
   createElement(tag) { return new MinimalElement(tag); }
 
   getElementById(id) {
-    return this._elements[id] || null;
+    if (this._elements[id]) return this._elements[id];
+    return this._deepFindById(this.body, id);
+  }
+
+  _deepFindById(el, id) {
+    if (!el) return null;
+    if (el.id === id) return el;
+    for (const child of (el.children || [])) {
+      const found = this._deepFindById(child, id);
+      if (found) return found;
+    }
+    if (el._parsedIds) {
+      for (const pid of Object.values(el._parsedIds)) {
+        const found = this._deepFindById(pid, id);
+        if (found) return found;
+      }
+    }
+    return null;
   }
 
   querySelector(selector) {
