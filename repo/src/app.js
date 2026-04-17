@@ -16,6 +16,7 @@ import { createTemplate } from './models/Contract.js';
 import { generateId, now } from './utils/helpers.js';
 import { loadAppConfig } from './config/appConfig.js';
 import { USER_ROLES } from './models/User.js';
+import { DEMO_USERS } from './config/demoSeeds.js';
 
 import { BootstrapPage } from './pages/BootstrapPage.js';
 import { LoginPage } from './pages/LoginPage.js';
@@ -48,6 +49,15 @@ async function boot() {
 
     // 3. Check whether first-run bootstrap is needed (no users exist)
     let _bootstrapNeeded = await authService.isBootstrapNeeded();
+
+    // Demo-seed mode: when the server injects window.__DEMO_SEED__ = true, skip the
+    // bootstrap screen entirely and create all four demo accounts automatically.
+    // Playwright tests and production runs start the server without DEMO_SEED so they
+    // are completely unaffected — the flag is simply absent (falsy) in those environments.
+    if (_bootstrapNeeded && globalThis.__DEMO_SEED__) {
+      await authService.seedDemoUsers(DEMO_USERS);
+      _bootstrapNeeded = false;
+    }
 
     // 2b. Seed default classes if empty (no user dependency)
     const classCount = await classRepository.count();

@@ -36,6 +36,7 @@ import { runInflateFallbackTests } from './unit_tests/test-inflate-fallback.js';
 import { runReputationFlowTests } from './unit_tests/test-reputation-flow.js';
 import { runCoverageGapTests } from './unit_tests/test-coverage-gaps.js';
 import { runMissingServicesTests } from './unit_tests/test-missing-services.js';
+import { runDemoSeedTests } from './unit_tests/test-demo-seed.js';
 
 // E2E tests (e2e_tests/)
 import { runE2ETests } from './e2e_tests/test-user-journeys.js';
@@ -51,6 +52,10 @@ import { runServerRuntimeTests } from './browser_tests/test-server-runtime.js';
 import { runSmokeTests } from './browser_tests/test-smoke.js';
 import { runFrontendUnitTests } from './browser_tests/test-frontend-units.js';
 import { runPageUnitTests } from './browser_tests/test-page-units.js';
+import { runPageOrchestratorTests } from './browser_tests/test-page-orchestrators.js';
+import { runAdminTabsTests } from './browser_tests/test-admin-tabs.js';
+import { runSubTabUnitTests } from './browser_tests/test-subtab-units.js';
+import { runModalTabTests } from './browser_tests/test-modal-tabs.js';
 
 async function main() {
   console.log('╔══════════════════════════════════════════════════╗');
@@ -92,6 +97,7 @@ async function main() {
   await runReputationFlowTests();
   await runCoverageGapTests();
   await runMissingServicesTests();
+  await runDemoSeedTests();
 
   // ---- E2E Tests ----
   console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
@@ -115,6 +121,10 @@ async function main() {
   await runSmokeTests();
   await runFrontendUnitTests();
   await runPageUnitTests();
+  await runPageOrchestratorTests();
+  await runAdminTabsTests();
+  await runSubTabUnitTests();
+  await runModalTabTests();
 
   // ---- Summary ----
   const result = printSummary();

@@ -12,6 +12,7 @@ import { fileURLToPath } from 'node:url';
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const BASE_PORT = Number(process.env.PORT) || 8080;
 const MAX_PORT_RETRIES = 5;
+const DEMO_SEED = process.env.DEMO_SEED === 'true';
 
 const MIME_TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -75,6 +76,18 @@ const requestHandler = async (req, res) => {
     const headers = { 'Content-Type': contentType };
     if (ext === '.js' || ext === '.css' || ext === '.json') {
       headers['Cache-Control'] = 'no-store';
+    }
+
+    // Inject demo-seed flag into HTML when DEMO_SEED=true so app.js auto-creates
+    // the four demo accounts on first load instead of showing the bootstrap screen.
+    if (DEMO_SEED && ext === '.html') {
+      const injected = content.toString().replace(
+        '</head>',
+        '<script>window.__DEMO_SEED__=true;</script></head>'
+      );
+      res.writeHead(200, headers);
+      res.end(injected);
+      return;
     }
 
     res.writeHead(200, headers);

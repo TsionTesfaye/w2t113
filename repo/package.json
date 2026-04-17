@@ -6,14 +6,25 @@
   "scripts": {
     "start": "node server.js",
     "test": "node run_tests.js",
+    "test:coverage": "npx c8 --reporter=text --reporter=lcov --branches=70 --lines=70 --functions=70 --statements=70 node run_tests.js",
     "test:e2e": "npx playwright test",
     "test:all": "node run_tests.js && npx playwright test"
+  },
+  "c8": {
+    "include": ["src/**/*.js"],
+    "exclude": ["src/store/Database.js"],
+    "reporter": ["text", "lcov"],
+    "branches": 70,
+    "lines": 70,
+    "functions": 70,
+    "statements": 70
   },
   "private": true,
   "engines": {
     "node": ">=18.0.0"
   },
   "devDependencies": {
-    "@playwright/test": "^1.52.0"
+    "@playwright/test": "^1.52.0",
+    "c8": "^10.1.3"
   }
 }

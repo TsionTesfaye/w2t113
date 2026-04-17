@@ -1,5 +1,7 @@
 # TrainingOps Enrollment & Quality Console
 
+> **Project type: web** — Pure frontend SPA. No backend, no API endpoints.
+
 Offline browser-based SPA for managing training class registrations, assessments, contracts, and trust workflows.
 
 ---
@@ -62,9 +64,9 @@ src/
   components/                 Reusable UI components (Toast, Modal, Drawer, DataTable, ...)
   pages/                      Page orchestrators and tab submodules
 
-unit_tests/                   Unit tests for individual service methods
-e2e_tests/                    Service-layer end-to-end user journeys
-browser_tests/                Browser simulation tests (DOM, persistence, routing)
+unit_tests/                   Service-layer unit tests (positive, negative, edge cases, RBAC)
+e2e_tests/                    Service-layer end-to-end multi-actor user journeys
+browser_tests/                Frontend unit tests: components, pages, tab modules (MinimalElement DOM simulation)
 playwright_tests/             Full browser E2E tests via Playwright/Chromium
 
 server.js                     Zero-dependency static file server
@@ -95,14 +97,16 @@ No other tools, libraries, or accounts are required. All dependencies are either
 ### With Docker (recommended)
 
 ```bash
-docker compose up
+docker-compose up
 ```
 
 Open **http://localhost:8080** in your browser.
 
 ```bash
-docker compose down   # stop
+docker-compose down   # stop
 ```
+
+> Docker Desktop v2+ also accepts `docker compose` (without hyphen) as an alias.
 
 ### Without Docker
 
@@ -117,7 +121,7 @@ Open **http://localhost:8080**. Requires Node.js 18+.
 ```bash
 PORT=8099 node server.js
 # or
-PORT=8099 docker compose up
+PORT=8099 docker-compose up
 ```
 
 ---
@@ -134,49 +138,66 @@ Builds the test image (`Dockerfile.test`), runs all suites inside Docker, and ex
 
 ### Local
 
-Unit, E2E, and browser simulation tests run with no package installation:
+Unit, E2E, and browser simulation tests require no package installation:
 
 ```bash
 node run_tests.js
 ```
 
-Playwright E2E tests require installing the test runner and Chromium (these run
-automatically inside Docker via `./run_tests.sh`):
-
-```bash
-npm install                            # install @playwright/test
-npx playwright install chromium --with-deps
-npx playwright test                    # requires server on localhost:8080
-```
+Playwright E2E tests are included automatically when running via Docker
+(`./run_tests.sh`). For local Playwright execution, refer to `Dockerfile.test`
+for the required runtime setup.
 
 ### Test suites
 
-| Suite | Location | What it covers |
-|-------|----------|---------------|
-| Unit | `unit_tests/` | Every public method on every service — positive, negative, edge cases, role enforcement |
-| E2E (service-layer) | `e2e_tests/` | Full multi-actor user journeys via real service calls |
-| Browser simulation | `browser_tests/` | DOM simulation, route enforcement, persistence, component rendering, import/export |
-| Playwright E2E | `playwright_tests/` | Full browser flows: auth, registrations, quiz, reviews, contracts, admin |
+| Suite | Location | Nature | What it covers |
+|-------|----------|--------|---------------|
+| Service unit | `unit_tests/` | Service-layer, in-process | Every public method on every service — positive, negative, edge cases, role enforcement |
+| Service E2E | `e2e_tests/` | Service-layer, in-process | Full multi-actor user journeys via real service calls |
+| Frontend unit | `browser_tests/` | DOM simulation (MinimalElement) | Components (Toast, Modal, Drawer, DataTable, AppShell, Chart), page classes (LoginPage, BootstrapPage, DashboardPage, RegistrationsPage, ReviewsPage, QuizPage, ContractsPage, AdminPage), and all 19 tab modules — render structure, RBAC gates, validation paths. Service calls are overridden by direct method replacement on imported singletons so no IndexedDB is touched. |
+| Browser sim E2E | `browser_tests/` | DOM simulation (MinimalElement) | Route enforcement, persistence, import/export, smoke |
+| Playwright E2E | `playwright_tests/` | Real Chromium | Full browser flows: auth, registrations, quiz, reviews, contracts, admin |
+
+> **Coverage measurement:** `npm run test:coverage` runs the service/browser test suites under [c8](https://github.com/bcoe/c8) (V8 native coverage) and enforces ≥ 70% lines/branches/functions across `src/**/*.js`. The Playwright suite and IndexedDB adapter (`src/store/Database.js`) are excluded — those are exercised by Playwright against a running server, not the coverage runner.
+
+> **Taxonomy note:** `unit_tests/` tests services in isolation using an `InMemoryStore` repository double — no IndexedDB. `browser_tests/` tests frontend classes using `MinimalElement` DOM simulation — no browser. Both are fast and require no external dependencies beyond Node.js 18+.
 
 All unit/e2e/browser tests run with `node run_tests.js` — no browser required. Playwright tests launch a real Chromium instance against the running server.
 
 ---
 
-## Seeded Credentials
+## Demo Credentials
 
-**The system has no default credentials.**
+The default `docker-compose up` (and `DEMO_SEED=true node server.js`) automatically
+creates four ready-to-use accounts on first launch. Open **http://localhost:8080** and
+log in immediately — no setup required.
 
-On first launch the app enters **bootstrap mode** — a dedicated screen blocks all other access until you create an administrator account:
+| Role | Username | Password |
+|------|----------|----------|
+| Administrator | `admin` | `Admin1234!` |
+| Staff Reviewer | `reviewer` | `Review123!` |
+| Instructor | `instructor` | `Teach1234!` |
+| Learner | `learner` | `Learn1234!` |
 
-1. Run the app and open **http://localhost:8080**
-2. The bootstrap screen appears (only shown when the user database is empty)
-3. Enter a username and password (minimum 8 characters)
-4. The administrator account is created; bootstrap mode exits permanently
+Seeding is **idempotent** — if accounts already exist the seed step is skipped silently.
+All passwords are hashed with PBKDF2 before storage; the plaintext values above are
+never persisted anywhere.
 
-After that, the administrator creates additional users (Staff Reviewer, Instructor, Learner) through **Admin → Users**.
+### Disabling auto-seed (production / custom setup)
 
-Security guarantees:
-- No hardcoded credentials anywhere in the codebase
-- No automatic credential seeding at any time
+Run the server without the `DEMO_SEED` variable:
+
+```bash
+node server.js           # no DEMO_SEED → bootstrap screen appears on first launch
+PORT=8080 docker-compose run --rm -e DEMO_SEED= app   # override to empty in Docker
+```
+
+When `DEMO_SEED` is absent the app enters **bootstrap mode** on first launch — a
+dedicated screen blocks all other access until you create an administrator account
+manually. After that, additional users are created via **Admin → Users → Create User**.
+
+Security notes:
+- Seed credentials are defined in `src/config/demoSeeds.js` — edit that file to change them
+- Auto-seed only runs when the user database is completely empty
 - All passwords are hashed with PBKDF2 before storage
-- `createBootstrapAdmin()` throws if called when users already exist
+- `createBootstrapAdmin()` and `seedDemoUsers()` both throw/no-op if users already exist

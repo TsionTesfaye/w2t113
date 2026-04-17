@@ -250,6 +250,32 @@ export class AuthService {
   }
 
   /**
+   * Seed multiple users at once during first-run demo setup.
+   * Only runs when the user store is completely empty — idempotent on subsequent
+   * calls.  Does not require an authenticated session (bypasses registerUser RBAC).
+   * Called by app.js when window.__DEMO_SEED__ is set by the server.
+   *
+   * @param {Array<{username, password, role, displayName}>} users
+   */
+  async seedDemoUsers(users) {
+    const count = await this._userRepo.count();
+    if (count > 0) return; // already seeded — safe to call multiple times
+
+    for (const u of users) {
+      const { hash, salt } = await this._cryptoService.hashPassword(u.password);
+      const user = createUser({
+        id: generateId(),
+        username: u.username,
+        passwordHash: `${hash}:${salt}`,
+        role: u.role,
+        displayName: u.displayName || u.username,
+      });
+      await this._userRepo.add(user);
+      await this._auditService.log('user', user.id, 'demo_seed', `Demo user "${u.username}" seeded`, 'system');
+    }
+  }
+
+  /**
    * Register a new user (admin action).
    * Only Administrators can register new users.
    */
